@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: url-shortener
+    
+  datasource:
+    url: jdbc:postgresql://localhost:5432/urlshortener
+    username: myuser
+    password: mypassword
+    driver-class-name: org.postgresql.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: update # For dev. Use validate in production.
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+server:
+  port: 8080
+
+app:
+  domain: "http://localhost:8080/"
