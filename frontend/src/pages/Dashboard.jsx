@@ -9,9 +9,8 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const clicksRes = await axios.get('http://localhost:8080/api/stats/total');
-        // We will fetch URL count from the admin URLs endpoint
-        const urlsRes = await axios.get('http://localhost:8080/api/admin/urls?size=1');
+        const clicksRes = await axios.get('/api/stats/total');
+        const urlsRes = await axios.get('/api/admin/urls?size=1');
         
         setStats({
           totalSystemClicks: clicksRes.data.totalSystemClicks || 0,

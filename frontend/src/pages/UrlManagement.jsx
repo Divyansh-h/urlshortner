@@ -8,10 +8,17 @@ const UrlManagement = () => {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // New URL state
+  const [newUrl, setNewUrl] = useState('');
+  const [customAlias, setCustomAlias] = useState('');
+  const [createdShortUrl, setCreatedShortUrl] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
+
   const fetchUrls = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:8080/api/admin/urls?page=${page}&size=10`);
+      const res = await axios.get(`/api/admin/urls?page=${page}&size=10`);
       setUrls(res.data.content);
       setTotalPages(res.data.totalPages);
     } catch (error) {
@@ -28,7 +35,7 @@ const UrlManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this URL? This action cannot be undone.')) {
       try {
-        await axios.delete(`http://localhost:8080/api/admin/urls/${id}`);
+        await axios.delete(`/api/admin/urls/${id}`);
         fetchUrls(); // Refresh list
       } catch (error) {
         console.error('Error deleting URL', error);
@@ -42,10 +49,74 @@ const UrlManagement = () => {
     return new Date(expiryTime) < new Date();
   };
 
+  const handleCreateUrl = async (e) => {
+    e.preventDefault();
+    if (!newUrl) return;
+    setCreateLoading(true);
+    setCreateError('');
+    setCreatedShortUrl('');
+    try {
+      const payload = { originalUrl: newUrl };
+      if (customAlias) payload.customAlias = customAlias;
+      const res = await axios.post('/api/shorten', payload);
+      setCreatedShortUrl(res.data.shortUrl);
+      setNewUrl('');
+      setCustomAlias('');
+      fetchUrls(); // Refresh table
+    } catch (error) {
+      console.error('Error creating URL', error);
+      const data = error.response?.data;
+      const errorMsg = data?.message || data?.error || (typeof data === 'object' ? JSON.stringify(data) : data) || 'Failed to create short URL';
+      setCreateError(errorMsg);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div>
       <h1 className="page-title">URL Management</h1>
       
+      {/* Create New URL Section */}
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'white' }}>Create Short URL</h2>
+        
+        {createError && <div className="error-message" style={{ marginBottom: '1rem' }}>{createError}</div>}
+        {createdShortUrl && (
+          <div className="success-message" style={{ marginBottom: '1rem', padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+            <strong>Success!</strong> Your short URL is: <br/>
+            <a href={createdShortUrl} target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>{createdShortUrl}</a>
+          </div>
+        )}
+
+        <form onSubmit={handleCreateUrl} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ flex: '2', minWidth: '250px', marginBottom: 0 }}>
+            <label className="form-label">Destination URL</label>
+            <input
+              type="url"
+              className="input-field"
+              placeholder="https://example.com/very/long/path"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group" style={{ flex: '1', minWidth: '150px', marginBottom: 0 }}>
+            <label className="form-label">Custom Alias (Optional)</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="my-campaign"
+              value={customAlias}
+              onChange={(e) => setCustomAlias(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={createLoading} style={{ height: '42px', padding: '0 1.5rem' }}>
+            {createLoading ? 'Shortening...' : 'Shorten URL'}
+          </button>
+        </form>
+      </div>
+
       <div className="glass-panel" style={{ padding: '1rem' }}>
         {loading ? (
           <p style={{ padding: '1rem' }}>Loading URLs...</p>
@@ -71,7 +142,7 @@ const UrlManagement = () => {
                   urls.map(url => (
                     <tr key={url.id}>
                       <td>
-                        <a href={`http://localhost:8080/${url.shortCode}`} target="_blank" rel="noreferrer" className="link-text" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <a href={`${window.location.origin}/${url.shortCode}`} target="_blank" rel="noreferrer" className="link-text" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           {url.shortCode} <ExternalLink size={12} />
                         </a>
                       </td>

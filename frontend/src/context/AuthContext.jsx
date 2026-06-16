@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('http://localhost:8080/api/admin/login', { username, password });
+      const response = await axios.post('/api/admin/login', { username, password });
       setToken(response.data.token);
       return true;
     } catch (error) {

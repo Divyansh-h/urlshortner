@@ -22,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: urlshortener-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -59,7 +59,7 @@ services:
       dockerfile: Dockerfile
     container_name: urlshortener-frontend
     ports:
-      - "3000:80"
+      - "3002:80"
     depends_on:
       - backend
 
@@ -100,7 +100,7 @@ services:
     image: logstash:8.13.0
     container_name: urlshortener-logstash
     ports:
-      - "5000:5000"
+      - "5044:5000"
     volumes:
       - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     depends_on:

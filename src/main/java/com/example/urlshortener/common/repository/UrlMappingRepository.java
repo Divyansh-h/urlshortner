@@ -1,4 +1,4 @@
-package com.example.urlshortener.repository;
+package com.example.urlshortener.common.repository;
 
 import com.example.urlshortener.common.model.UrlMapping;
 import org.springframework.data.jpa.repository.JpaRepository;

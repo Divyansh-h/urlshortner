@@ -1,7 +1,7 @@
 package com.example.urlshortener.creation.job;
 
 import com.example.urlshortener.common.model.UrlMapping;
-import com.example.urlshortener.repository.UrlMappingRepository;
+import com.example.urlshortener.common.repository.UrlMappingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

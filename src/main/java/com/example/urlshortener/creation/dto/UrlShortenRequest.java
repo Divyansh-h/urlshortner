@@ -1,4 +1,4 @@
-package com.example.urlshortener.dto;
+package com.example.urlshortener.creation.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.URL;

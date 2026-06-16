@@ -27,6 +27,7 @@ public class ApiKey {
     @Column(name = "user_id", nullable = false)
     private String userId;
 
+    @Builder.Default
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 

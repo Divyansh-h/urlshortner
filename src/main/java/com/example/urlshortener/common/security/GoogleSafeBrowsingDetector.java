@@ -38,6 +38,7 @@ public class GoogleSafeBrowsingDetector implements MaliciousUrlDetector {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.postForEntity(API_URL + apiKey, entity, Map.class);
             
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {

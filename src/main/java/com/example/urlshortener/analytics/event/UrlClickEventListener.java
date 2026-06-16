@@ -1,6 +1,5 @@
 package com.example.urlshortener.analytics.event;
 
-import com.example.urlshortener.analytics.event.UrlClickedEvent;
 import com.example.urlshortener.analytics.job.ClickAnalyticsBatchJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +27,9 @@ public class UrlClickEventListener {
                 batchJob.recordClick(event.getShortCode());
                 log.debug("Buffered click for short code: {}", event.getShortCode());
             } catch (Exception e) {
-                log.error("Failed to async buffer click for short code: {}", event.getShortCode(), e);
+                @SuppressWarnings("rawtypes")
+                String errorMessage = "Failed to async buffer click for short code: {}";
+                log.error(errorMessage, event.getShortCode(), e);
             }
         });
     }

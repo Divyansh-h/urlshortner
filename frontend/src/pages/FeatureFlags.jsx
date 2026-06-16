@@ -9,7 +9,7 @@ const FeatureFlags = () => {
   const fetchFlags = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:8080/api/admin/flags');
+      const res = await axios.get('/api/admin/flags');
       setFlags(res.data);
     } catch (error) {
       console.error('Error fetching feature flags', error);
@@ -24,7 +24,7 @@ const FeatureFlags = () => {
 
   const toggleFlag = async (name, currentStatus) => {
     try {
-      await axios.put(`http://localhost:8080/api/admin/flags/${name}`, { enabled: !currentStatus });
+      await axios.put(`/api/admin/flags/${name}`, { enabled: !currentStatus });
       // Update local state to reflect change instantly
       setFlags(flags.map(f => f.name === name ? { ...f, enabled: !currentStatus } : f));
     } catch (error) {

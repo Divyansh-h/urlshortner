@@ -15,8 +15,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    // For production, this should be injected via environment variables!
-    private final SecretKey secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    // Hardcoded for local dev. In production, inject via env vars!
+    private final SecretKey secretKey = Keys.hmacShaKeyFor("my-super-secret-key-that-is-very-long-and-secure-12345".getBytes());
     private final long JWT_TOKEN_VALIDITY = 24 * 60 * 60 * 1000; // 24 hours
 
     public String getUsernameFromToken(String token) {
