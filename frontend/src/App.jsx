@@ -1,82 +1,62 @@
-import { useState } from 'react';
-import { urlService } from './api/urlService';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import UrlManagement from './pages/UrlManagement';
+import FeatureFlags from './pages/FeatureFlags';
+import Sidebar from './components/Sidebar';
 import './App.css';
 
-function App() {
-  const [originalUrl, setOriginalUrl] = useState('');
-  const [shortUrl, setShortUrl] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleShorten = async (e) => {
-    e.preventDefault();
-    setError('');
-    setShortUrl('');
-
-    if (!originalUrl) {
-      setError('Please enter a valid URL.');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      // Call the API service layer instead of inline Axios
-      const data = await urlService.shortenUrl(originalUrl);
-      
-      setShortUrl(data.shortUrl);
-    } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Failed to shorten the URL. Please try again later.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
   return (
-    <div className="container">
-      <div className="card">
-        <h1>URL Shortener</h1>
-        <p>Paste your long URL below to generate a short, shareable link.</p>
-        
-        <form onSubmit={handleShorten} className="form-group">
-          <input
-            type="text"
-            placeholder="Enter long link here (e.g., https://example.com/very/long/path)"
-            value={originalUrl}
-            onChange={(e) => setOriginalUrl(e.target.value)}
-            disabled={isLoading}
-            className="url-input"
-          />
-          <button type="submit" disabled={isLoading} className="submit-btn">
-            {isLoading ? 'Shortening...' : 'Shorten'}
-          </button>
-        </form>
-
-        {error && <div className="error-message">{error}</div>}
-
-        {shortUrl && (
-          <div className="result-container">
-            <h3>Your Short URL:</h3>
-            <div className="short-url-box">
-              <a href={shortUrl} target="_blank" rel="noopener noreferrer">
-                {shortUrl}
-              </a>
-              <button 
-                onClick={() => navigator.clipboard.writeText(shortUrl)}
-                className="copy-btn"
-                title="Copy to clipboard"
-              >
-                📋 Copy
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="app-container">
+      <Sidebar />
+      <main className="main-content">
+        {children}
+      </main>
     </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/urls" 
+            element={
+              <ProtectedRoute>
+                <UrlManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/flags" 
+            element={
+              <ProtectedRoute>
+                <FeatureFlags />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

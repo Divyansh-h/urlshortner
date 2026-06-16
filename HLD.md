@@ -13,6 +13,15 @@
                                           v
                                 +-------------------+
                                 |                   |
+                                | CDN (Cloudflare/  | (Edge Redirection)
+                                | AWS CloudFront)   |
+                                |                   |
+                                +---------+---------+
+                                          |
+                                          | (Cache Miss / API requests)
+                                          v
+                                +-------------------+
+                                |                   |
                                 |  Load Balancer    | (NGINX / AWS ALB)
                                 |                   |
                                 +---------+---------+
@@ -59,16 +68,20 @@
 
 ### B. URL Redirection Flow (Read Path)
 1. **User Action:** A user clicks on the short URL `https://short.ly/xyz123`.
-2. **API Request:** The browser sends a `GET /xyz123` request.
-3. **Routing:** The Load Balancer forwards the request to a Spring Boot App Instance.
-4. **Cache Lookup (Optional but critical for scale):**
-    - The backend checks Redis for the key `xyz123`.
-    - If found (Cache Hit), it retrieves the `originalUrl` immediately.
-5. **Database Lookup:**
-    - If not found in Redis (Cache Miss), the backend queries PostgreSQL for the `shortCode`.
-    - If found, it saves the result in Redis for future requests.
-6. **Redirection:** The Spring Boot app responds with an HTTP `302 Found` (or `301 Moved Permanently`) status, with the `Location` header set to the `originalUrl`.
-7. **Browser Redirect:** The user's browser follows the `Location` header to the destination site.
+2. **DNS & Edge Routing:** The request hits the nearest CDN Edge Server.
+3. **CDN Cache Lookup (Edge Redirection):**
+    - The CDN checks its edge cache for the path `/xyz123`.
+    - If found, the CDN immediately returns a `301 Moved Permanently` (or 302) to the user's browser. The request **never** reaches our backend servers (zero latency, infinite scale).
+4. **Origin Request (Cache Miss):**
+    - If not found at the edge, the CDN forwards the `GET /xyz123` request to our Load Balancer.
+5. **Routing:** The Load Balancer forwards the request to a Spring Boot App Instance.
+6. **Backend Cache Lookup (Redis):**
+    - The backend checks Redis for `xyz123`. If found, it retrieves the `originalUrl`.
+7. **Database Lookup:**
+    - If not found in Redis, it queries PostgreSQL, then saves it to Redis.
+8. **Redirection & Edge Caching:** 
+    - The Spring Boot app responds with an HTTP `302 Found` (or `301`), including proper `Cache-Control` headers (e.g., `Cache-Control: public, max-age=3600`).
+    - The CDN intercepts this response, caches the redirection locally for the specified duration, and forwards it to the user's browser.
 
 ## 3. Core Components Explanation
 
@@ -76,6 +89,10 @@
 *   **Purpose:** Provides a user-friendly UI to input long URLs, view generated short URLs, and manage past links (if user authentication is added).
 *   **Key Tech:** React, Axios (for API calls), TailwindCSS or similar for styling.
 *   **Role in Scaling:** React apps are compiled to static assets (HTML/JS/CSS) which can be hosted on a CDN (Content Delivery Network). This makes the frontend infinitely scalable as it puts zero load on the application backend until an API call is made.
+
+### Content Delivery Network (CDN - Edge Layer)
+*   **Purpose:** The ultimate scaling layer for read-heavy workloads. CDNs like Cloudflare or AWS CloudFront cache static assets AND HTTP responses (URL redirections) geographically close to the user.
+*   **Role in Scaling:** By caching the HTTP `301/302` redirects using `Cache-Control` headers, the CDN intercepts viral link clicks. If a link receives millions of clicks globally, the edge servers handle the redirection natively. This offloads up to 99% of read traffic from the Load Balancers, Spring Boot servers, and Database, guaranteeing global sub-10ms redirection latency.
 
 ### Load Balancer
 *   **Purpose:** Distributes incoming traffic across multiple Spring Boot backend instances.
@@ -99,3 +116,18 @@
 *   **Purpose:** URL shorteners are incredibly read-heavy (many more redirects happen than link creations). Querying the DB for every single click will quickly overwhelm PostgreSQL.
 *   **Mechanism:** Redis stores the `shortCode -> originalUrl` mapping in RAM. When a read request comes in, the backend checks Redis first. Since RAM lookups take microseconds, this drastically reduces latency and database load.
 *   **Eviction Policy:** Uses an LRU (Least Recently Used) policy so that infrequently accessed short links are dropped from the cache, while viral links stay in memory.
+
+## 4. Distributed Cache Strategy
+
+As the system scales to handle millions of requests, a single Redis instance becomes a bottleneck. We employ a distributed cache architecture.
+
+### Redis Cluster Design
+Instead of a standalone server, we use a **Redis Cluster**.
+*   **Multiple Master Nodes:** Data is split across several Master nodes to multiply available RAM and spread CPU/network load.
+*   **High Availability:** Each Master has one or more Replicas. If a Master crashes, a Replica is automatically promoted to Master without manual intervention.
+
+### Cache Sharding (Data Partitioning)
+Data must be distributed evenly across all Master nodes to prevent hot spots. Redis Cluster achieves this using **Hash Slots** (there are exactly 16,384 slots).
+*   **Algorithm:** `HASH_SLOT = CRC16(KEY) mod 16384`
+*   Because our short codes are uniformly distributed (via Base62 encoding of Snowflake IDs), the CRC16 hash naturally spreads the URLs evenly across all slots and, consequently, across all Master nodes.
+*   For extreme viral links (the "thundering herd" problem), we employ a Two-Tier Cache (L1 Caffeine in JVM + L2 Redis Cluster) to prevent overwhelming a single Redis shard.
